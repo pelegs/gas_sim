@@ -33,8 +33,8 @@ class ball:
                  ID    = -1,
                  grid  = None):
 
-        self.pos    = pos.flatten()
-        self.vel    = vel.flatten()
+        self.pos    = pos.astype(np.float64).flatten()
+        self.vel    = vel.astype(np.float64).flatten()
         self.rad    = rad
         self.mass   = mass 
         self.color  = color
@@ -76,8 +76,8 @@ class wall:
                  color     = colors['black'],
                  ID        = -1):
 
-        self.direction = direction
-        self.start     = start
+        self.direction = direction.astype(np.float64).flatten()
+        self.start     = start.astype(np.float64).flatten()
         self.length    = length
         self.end       = start + length * direction
         self.width     = width
@@ -118,40 +118,107 @@ def zero_cm_vel(balls):
     cm_vel = np.sum(b.vel for b in balls)
     balls[0].vel = balls[0].vel - cm_vel
 
+def place_particles(num_particles,
+                    pos_min, pos_max,
+                    vel_sigma,
+                    rad, mass,
+                    color):
+    particles = []
+    i = 0
+    while i < num_particles:
+        c = np.random.uniform(pos_min, pos_max, size=(1,2)).astype(np.float64).flatten()
+        overlap = False
+        for b in particles:
+            if vecfuncs.distance(c, b.pos) <= 2*rad:
+                overlap = True
+                break
+        if not overlap:
+            v = np.random.normal(0, vel_sigma, size=(1,2))
+            particles.append(ball(pos  = c,
+                                  vel  = v,
+                                  rad  = rad,
+                                  mass = mass,
+                                  ID   = i,
+                                  color = color))
+            i += 1
+    print(i)
+    return particles
+
 parser = argparse.ArgumentParser (description="A simple 2D gas simulation")
-parser.add_argument('-i','--input_file', help='Input file', required=True)
+parser.add_argument('-i','--input_file', help='Input file', required=False)
+parser.add_argument('-p','--place', help='', required=False)
 parser.parse_args()
 args = vars (parser.parse_args())
-read_mode = 'particles'
-with open(args['input_file']) as f:
-    lines = f.readlines()
-N_balls = int(lines[0][:-1].split()[0])
-rad = 5
-balls = []
-walls = []
-for i in range(1, N_balls+1):
-    line = lines[i][:-1].split(' ')
-    x, y, vx, vy, rad, mass = line[:6]
-    color = np.array(line[6:9]).astype(int).flatten()
-    balls.append(ball(pos   = np.array([float(x), float(y)]),
-                      vel   = np.array([float(vx), float(vy)]),
-                      rad   = int(rad),
-                      mass  = float(mass),
-                      color = color))
-zero_cm_vel(balls)
-N_walls = int(lines[N_balls+1][:-1].split()[0])
-for j in range(N_balls+2, N_balls+2+N_walls):
-    line = lines[j][:-1].split(' ')
-    sx, sy, ax, ay, L, w = line[:6]
-    color = np.array(line[6:9]).astype(int).flatten()
-    walls.append(wall(start     = np.array([float(sx), float(sy)]),
-                      direction = np.array([float(ax), float(ay)]),
-                      length    = float(L),
-                      width     = int(w),
-                      color     = color))
-last_line = lines[-1][:-1].split(' ')
-scr_size = int(last_line[0])
-dt = float(last_line[1])
+
+''' !! should be moved to a function !! '''
+if args['place']:
+    rad = 10
+    scr_size = 800
+    dt = 0.05
+    N_balls = int(args['place'])
+    balls = place_particles(num_particles = N_balls,
+                            pos_min = 10,
+                            pos_max = 790,
+                            vel_sigma = 50,
+                            rad = rad,
+                            mass = 1,
+                            color = [0, 0, 255])
+
+    wall0 = wall(start     = np.array([0, 0]),
+                 direction = np.array([1, 0]),
+                 length    = 800.0,
+                 width     = 2,
+                 color     = [0, 0, 0])
+    
+    wall1 = wall(start     = np.array([0, 0]),
+                 direction = np.array([0, 1]),
+                 length    = 800.0,
+                 width     = 2,
+                 color     = [0, 0, 0])
+    
+    wall2 = wall(start     = np.array([800, 800]),
+                 direction = np.array([-1, 0]),
+                 length    = 800.0,
+                 width     = 2,
+                 color     = [0, 0, 0])
+                
+    wall3 = wall(start     = np.array([800, 800]),
+                 direction = np.array([0, -1]),
+                 length    = 800.0,
+                 width     = 2,
+                 color     = [0, 0, 0])
+
+    walls = [wall0, wall1, wall2, wall3]
+else:
+    with open(args['input_file']) as f:
+        lines = f.readlines()
+    N_balls = int(lines[0][:-1].split()[0])
+    rad = 5
+    balls = []
+    walls = []
+    for i in range(1, N_balls+1):
+        line = lines[i][:-1].split(' ')
+        x, y, vx, vy, rad, mass = line[:6]
+        color = np.array(line[6:9]).astype(int).flatten()
+        balls.append(ball(pos   = np.array([float(x), float(y)]),
+                          vel   = np.array([float(vx), float(vy)]),
+                          rad   = int(rad),
+                          mass  = float(mass),
+                          color = color))
+    zero_cm_vel(balls)
+    N_walls = int(lines[N_balls+1][:-1].split()[0])
+    for j in range(N_balls+2, N_balls+2+N_walls):
+        line = lines[j][:-1].split(' ')
+        sx, sy, ax, ay, L, w = line[:6]
+        color = np.array(line[6:9]).astype(int).flatten()
+        walls.append(wall(start     = np.array([float(sx), float(sy)]),
+                          direction = np.array([float(ax), float(ay)]),
+                          length    = float(L),
+                          width     = int(w),
+                          color     = color))
+    last_line = lines[-1][:-1].split(' ')
+    scr_size = int(last_line[0])
+    dt = float(last_line[1])
 
 num_grid_cells = int(scr_size / (int(rad) * 2))
 grid = sim_grid(num_grid_cells)
@@ -207,4 +274,4 @@ while True:
     t += 1
     
     elapsed_time = time.time() - start_time
-    print('\rFPS:', int(1/elapsed_time), end='')
+    #print('\rFPS:', int(1/elapsed_time), '           ', end='')
