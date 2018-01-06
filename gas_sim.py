@@ -51,7 +51,7 @@ class ball:
         self.neighbors = [b for b in cells if b is not self]
 
     def draw(self, surface):
-        pygame.draw.circle(surface, self.color, self.pos.astype(int), self.rad)
+        pygame.draw.circle(surface, self.color, self.pos.astype(int), int(self.rad))
 
     def move(self, dt, gravity=False, g=np.array([0, 1])):
         prev_pos = self.pos
@@ -144,22 +144,28 @@ def place_particles(num_particles,
     print(i)
     return particles
 
-parser = argparse.ArgumentParser (description="A simple 2D gas simulation")
-parser.add_argument('-i','--input_file', help='Input file', required=False)
-parser.add_argument('-p','--place', help='', required=False)
+parser = argparse.ArgumentParser(description="A simple 2D gas simulation")
+parser.add_argument('-i','--input',  help='Input file', required=False)
+parser.add_argument('-p','--place',  type=bool,  required=False, default=False)
+parser.add_argument('-r','--radius', type=float, required=False, default=10.0)
+parser.add_argument('-s','--speed',  type=float, required=False, default=50.0)
+parser.add_argument('-c','--screen', type=int,   required=False, default=800)
+parser.add_argument('-t','--dt',     type=float, required=False, default=0.1)
+parser.add_argument('-n','--num',    type=int,   required=False, default=100)
+parser.add_argument('-g','--grav',   type=float, required=False, default=3.5)
 parser.parse_args()
-args = vars (parser.parse_args())
+args = vars(parser.parse_args())
 
 ''' !! should be moved to a function !! '''
 if args['place']:
-    rad = 10
-    scr_size = 800
-    dt = 0.05
-    N_balls = int(args['place'])
+    rad = args['radius']
+    scr_size = args['screen']
+    dt = args['dt']
+    N_balls = args['num']
     balls = place_particles(num_particles = N_balls,
                             pos_min = 10,
                             pos_max = 790,
-                            vel_sigma = 50,
+                            vel_sigma = args['speed'],
                             rad = rad,
                             mass = 1,
                             color = [0, 0, 255])
@@ -259,7 +265,7 @@ while True:
         for wall in walls:
             if gaslibc.time_wall_collision(ball1, wall) < dt:
                 ball1.bounce(wall)
-        ball1.move(dt, gravity=True, g=3*np.array([0, 1]))
+        ball1.move(dt, gravity=True, g=args['grav']*np.array([0, 1]))
         ball1.draw(screen)
         MSD[i] = ball.MSD
     for wall in walls:
@@ -269,9 +275,10 @@ while True:
 
     #Ek_tot = sum([ball.Ek() for ball in balls ])
     #print('\rEk total =', Ek_tot, '              ', end='')
+    #print(t, Ek_tot)
     
     #print(t, np.average(MSD))
     t += 1
     
     elapsed_time = time.time() - start_time
-    #print('\rFPS:', int(1/elapsed_time), '           ', end='')
+    print('\rFPS:', int(1/elapsed_time), '           ', end='')
