@@ -87,6 +87,7 @@ class wall:
     def draw(self, surface): 
         pygame.draw.line(surface, self.color, self.start.astype(int), self.end.astype(int), self.width)
 
+
 class sim_grid:
     def __init__(self, N):
         self.cells = [[[] for _ in range(N)]
